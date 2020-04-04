@@ -9,7 +9,63 @@
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recycler"
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="0dp"
+
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/dop1"
+        />
+
+    <Button
+        android:id="@+id/dop1"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="dop1"
+
+        app:layout_constraintBottom_toTopOf="@id/prependData"
+        app:layout_constraintEnd_toStartOf="@id/dop2"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <Button
+        android:id="@+id/dop2"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="dop2"
+
+        app:layout_constraintBottom_toBottomOf="@id/dop1"
+        app:layout_constraintEnd_toStartOf="@id/dop3"
+        app:layout_constraintStart_toEndOf="@id/dop1" />
+
+    <Button
+        android:id="@+id/dop3"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="dop3"
+
+        app:layout_constraintBottom_toBottomOf="@id/dop1"
+        app:layout_constraintEnd_toStartOf="@id/dop4"
+        app:layout_constraintStart_toEndOf="@id/dop2" />
+
+    <Button
+        android:id="@+id/dop4"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="dop4"
+
+        app:layout_constraintBottom_toBottomOf="@id/dop1"
+        app:layout_constraintEnd_toStartOf="@id/dop5"
+        app:layout_constraintStart_toEndOf="@id/dop3" />
+
+    <Button
+        android:id="@+id/dop5"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="dop5"
+
+        app:layout_constraintBottom_toBottomOf="@id/dop1"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@id/dop4" />
 
     <Button
         android:id="@+id/prependData"
@@ -27,7 +83,7 @@
         android:layout_height="wrap_content"
         android:text="append"
 
-        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintBottom_toBottomOf="@id/prependData"
         app:layout_constraintEnd_toStartOf="@id/anyAddData"
         app:layout_constraintStart_toEndOf="@id/prependData" />
 
@@ -37,7 +93,7 @@
         android:layout_height="wrap_content"
         android:text="any Add"
 
-        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintBottom_toBottomOf="@id/prependData"
         app:layout_constraintEnd_toStartOf="@id/replaceStart"
         app:layout_constraintStart_toEndOf="@id/appendData" />
 
@@ -47,8 +103,18 @@
         android:layout_height="wrap_content"
         android:text="repl st"
 
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toBottomOf="@id/prependData"
+        app:layout_constraintEnd_toStartOf="@id/additBtn"
         app:layout_constraintStart_toEndOf="@id/anyAddData" />
+
+    <Button
+        android:id="@+id/additBtn"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="addition"
+
+        app:layout_constraintBottom_toBottomOf="@id/prependData"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@id/replaceStart" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

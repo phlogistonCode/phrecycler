@@ -13,11 +13,11 @@ abstract class PhrecyclerAdapter<LT> :
     RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     private var dataSet: List<LT> = ArrayList()
+    private var idMap: MutableMap<LT, Pair<Int, RecyclerView.ViewHolder>> = mutableMapOf()
 
     abstract val setViewHolders: Map<Class<out PhrecyclerViewHolder<LT>>, Int>
 
-    open val determineVTFunc: (LT) -> Class<out RecyclerView.ViewHolder> =
-        { setViewHolders.keys.first() }
+    open fun determineVTFunc() : (LT) -> Class<out RecyclerView.ViewHolder> = { setViewHolders.keys.first() }
 
     final override fun onCreateViewHolder(
         parent: ViewGroup,
@@ -34,45 +34,16 @@ abstract class PhrecyclerAdapter<LT> :
 
     final override fun getItemViewType(position: Int) =
         if (setViewHolders.keys.size == 1) setViewHolders.getValue(setViewHolders.keys.first())
-        else getViewHolderType(determineVTFunc.invoke(dataSet[position]))
+        else getViewHolderType(determineVTFunc().invoke(dataSet[position]))
 
-    private fun createBaseViewHolder(parent: ViewGroup) =
-        BaseViewHolder(createViewLayout(parent, R.layout.item_baseviewholder))
-
-    private fun createViewLayout(parent: ViewGroup, @LayoutRes layoutResId: Int) =
-        LayoutInflater.from(parent.context).inflate(
-            layoutResId,
-            parent,
-            false
-        )
-
-    private fun getViewHolderType(viewHolderClass: Class<*>) = viewHolderClass.hashCode()
-
-    private fun createBaseGenericKInstance(z: Class<*>, view: View): RecyclerView.ViewHolder? {
-        try {
-            val constructor: Constructor<*>
-            // inner and unstatic class
-            return if (z.isMemberClass && !Modifier.isStatic(z.modifiers)) {
-                constructor = z.getDeclaredConstructor(javaClass, View::class.java)
-                constructor.isAccessible = true
-                constructor.newInstance(this, view) as RecyclerView.ViewHolder
-            } else {
-                constructor = z.getDeclaredConstructor(View::class.java)
-                constructor.isAccessible = true
-                constructor.newInstance(view) as RecyclerView.ViewHolder
-            }
-        } catch (e: NoSuchMethodException) {
-            e.printStackTrace()
-        } catch (e: IllegalAccessException) {
-            e.printStackTrace()
-        } catch (e: InstantiationException) {
-            e.printStackTrace()
-        } catch (e: InvocationTargetException) {
-            e.printStackTrace()
+    override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+        holder.tryCast<PhrecyclerViewHolder<LT>> {
+            this.bind(dataSet[position])
+            idMap[dataSet[position]] = Pair(this.adapterPosition, this)
         }
-
-        return null
     }
+
+    override fun getItemCount() = dataSet.size
 
     fun replaceList(dataSet: List<LT>) {
         this.dataSet = dataSet
@@ -228,18 +199,90 @@ abstract class PhrecyclerAdapter<LT> :
         }
     }
 
+    fun getPosition(item: LT) = idMap[item]?.first
+
+    fun getPositions(list: List<LT>): List<Int> {
+        val positions = mutableListOf<Int>()
+        list.forEach {
+            idMap[it]?.first?.let { position -> positions.add(position) }
+        }
+        return positions
+    }
+
+    fun getHolder(item: LT) = idMap[item]?.second
+
+    fun getHolder(position: Int) = idMap[dataSet[position]]?.second
+
+    fun getHolders(list: List<LT>): List<RecyclerView.ViewHolder> {
+        val holders = mutableListOf<RecyclerView.ViewHolder>()
+        list.forEach {
+            idMap[it]?.second?.let { holder -> holders.add(holder) }
+        }
+        return holders
+    }
+
+    fun getDataSet() = this.dataSet
+
+    fun getIdMap() = this.idMap
+
+    fun updateAll() = notifyDataSetChanged()
+
+    fun updateItem(item: LT) = getPosition(item)?.let { notifyItemChanged(it) }
+
+    fun updateList(list: List<LT>) {
+        list.forEach { item ->
+            getPosition(item)?.let { notifyItemChanged(it) }
+        }
+    }
+
+    fun updateStart(size: Int) = notifyItemRangeChanged(0, size)
+
+    fun updateEnd(size: Int) = notifyItemRangeChanged(dataSet.size - size, size)
+
+    fun updateAfterPos(size: Int, position: Int) = notifyItemRangeChanged(position, size)
+
     fun clearData() {
         val tempSize = dataSet.size
         dataSet = emptyList()
         notifyItemRangeRemoved(0, tempSize)
     }
 
-    override fun getItemCount() = dataSet.size
+    private fun createBaseViewHolder(parent: ViewGroup) =
+        BaseViewHolder(createViewLayout(parent, R.layout.item_baseviewholder))
 
-    override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
-        holder.tryCast<PhrecyclerViewHolder<LT>> {
-            this.bind(dataSet[position])
+    private fun createViewLayout(parent: ViewGroup, @LayoutRes layoutResId: Int) =
+        LayoutInflater.from(parent.context).inflate(
+            layoutResId,
+            parent,
+            false
+        )
+
+    private fun getViewHolderType(viewHolderClass: Class<*>) = viewHolderClass.hashCode()
+
+    private fun createBaseGenericKInstance(z: Class<*>, view: View): RecyclerView.ViewHolder? {
+        try {
+            val constructor: Constructor<*>
+            // inner and unstatic class
+            return if (z.isMemberClass && !Modifier.isStatic(z.modifiers)) {
+                constructor = z.getDeclaredConstructor(javaClass, View::class.java)
+                constructor.isAccessible = true
+                constructor.newInstance(this, view) as RecyclerView.ViewHolder
+            } else {
+                constructor = z.getDeclaredConstructor(View::class.java)
+                constructor.isAccessible = true
+                constructor.newInstance(view) as RecyclerView.ViewHolder
+            }
+        } catch (e: NoSuchMethodException) {
+            e.printStackTrace()
+        } catch (e: IllegalAccessException) {
+            e.printStackTrace()
+        } catch (e: InstantiationException) {
+            e.printStackTrace()
+        } catch (e: InvocationTargetException) {
+            e.printStackTrace()
         }
+
+        return null
     }
 
     private inline fun <reified T> Any?.tryCast(block: T.() -> Unit) {

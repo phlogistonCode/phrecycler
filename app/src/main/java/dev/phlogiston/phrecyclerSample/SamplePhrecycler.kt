@@ -1,6 +1,5 @@
 package dev.phlogiston.phrecyclerSample
 
-import androidx.recyclerview.widget.RecyclerView
 import dev.phlogiston.phrecycler.PhrecyclerAdapter
 
 class SamplePhrecycler : PhrecyclerAdapter<DataClass>() {
@@ -10,9 +9,8 @@ class SamplePhrecycler : PhrecyclerAdapter<DataClass>() {
         Item2VH::class.java to R.layout.item_2
     )
 
-    override val determineVTFunc: (DataClass) -> Class<out RecyclerView.ViewHolder> = {
-        if (it.id % 3 == 0) Item1VH::class.java
+    override fun determineVTFunc() = { dataClass: DataClass ->
+        if (dataClass.id % 3 == 0) Item1VH::class.java
         else Item2VH::class.java
     }
-
 }

@@ -241,6 +241,10 @@ abstract class PhrecyclerAdapter<LT> :
 
     fun updateAfterPos(size: Int, position: Int) = notifyItemRangeChanged(position, size)
 
+    fun updateItemByParam(by: (LT) -> Boolean) {
+        idMap[idMap.keys.find { by.invoke(it) }]?.let { notifyItemChanged(it.first) }
+    }
+
     fun clearData() {
         val tempSize = dataSet.size
         dataSet = emptyList()

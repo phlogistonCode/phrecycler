@@ -26,6 +26,8 @@ class MainActivity : AppCompatActivity(R.layout.activity_main) {
         dop1.setOnClickListener { adapter.updateStart(3) }
         dop2.setOnClickListener { adapter.updateEnd(3) }
         dop3.setOnClickListener { adapter.updateAfterPos(3, 3) }
+        dop4.setOnClickListener { adapter.updateItemByParam { it.id == 3 } }
+        dop5.setOnClickListener { adapter.updateAfterPos(3, 3) }
 
         initRv()
     }

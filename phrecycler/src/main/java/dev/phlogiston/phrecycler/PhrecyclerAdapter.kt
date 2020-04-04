@@ -19,6 +19,8 @@ abstract class PhrecyclerAdapter<LT> :
 
     open fun determineVTFunc() : (LT) -> Class<out RecyclerView.ViewHolder> = { setViewHolders.keys.first() }
 
+    open fun itemClick() : (LT) -> Unit = {}
+
     final override fun onCreateViewHolder(
         parent: ViewGroup,
         viewType: Int
@@ -40,6 +42,7 @@ abstract class PhrecyclerAdapter<LT> :
         holder.tryCast<PhrecyclerViewHolder<LT>> {
             this.bind(dataSet[position])
             idMap[dataSet[position]] = Pair(this.adapterPosition, this)
+            holder.itemView.setOnClickListener { itemClick().invoke(dataSet[position]) }
         }
     }
 

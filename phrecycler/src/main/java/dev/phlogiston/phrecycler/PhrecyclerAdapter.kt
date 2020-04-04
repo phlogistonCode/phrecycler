@@ -1,0 +1,351 @@
+package dev.phlogiston.phrecycler
+
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import androidx.annotation.LayoutRes
+import androidx.recyclerview.widget.RecyclerView
+import java.lang.reflect.Constructor
+import java.lang.reflect.InvocationTargetException
+import java.lang.reflect.Modifier
+
+abstract class PhrecyclerAdapter<LT> :
+    RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+
+    private var dataSet: List<LT> = ArrayList()
+
+    abstract val setViewHolders: Map<Class<out PhrecyclerViewHolder<LT>>, Int>
+
+    open val determineVTFunc: (LT) -> Class<out RecyclerView.ViewHolder> =
+        { setViewHolders.keys.first() }
+
+    final override fun onCreateViewHolder(
+        parent: ViewGroup,
+        viewType: Int
+    ): RecyclerView.ViewHolder {
+        setViewHolders.keys.find { getViewHolderType(it) == viewType }?.let {
+            setViewHolders[it]?.let { layoutId ->
+                createBaseGenericKInstance(it, createViewLayout(parent, layoutId))?.let { vh ->
+                    return vh
+                } ?: return createBaseViewHolder(parent)
+            } ?: return createBaseViewHolder(parent)
+        } ?: return createBaseViewHolder(parent)
+    }
+
+    final override fun getItemViewType(position: Int) =
+        if (setViewHolders.keys.size == 1) setViewHolders.getValue(setViewHolders.keys.first())
+        else getViewHolderType(determineVTFunc.invoke(dataSet[position]))
+
+    private fun createBaseViewHolder(parent: ViewGroup) =
+        BaseViewHolder(createViewLayout(parent, R.layout.item_baseviewholder))
+
+    private fun createViewLayout(parent: ViewGroup, @LayoutRes layoutResId: Int) =
+        LayoutInflater.from(parent.context).inflate(
+            layoutResId,
+            parent,
+            false
+        )
+
+    private fun getViewHolderType(viewHolderClass: Class<*>) = viewHolderClass.hashCode()
+
+    private fun createBaseGenericKInstance(z: Class<*>, view: View): RecyclerView.ViewHolder? {
+        try {
+            val constructor: Constructor<*>
+            // inner and unstatic class
+            return if (z.isMemberClass && !Modifier.isStatic(z.modifiers)) {
+                constructor = z.getDeclaredConstructor(javaClass, View::class.java)
+                constructor.isAccessible = true
+                constructor.newInstance(this, view) as RecyclerView.ViewHolder
+            } else {
+                constructor = z.getDeclaredConstructor(View::class.java)
+                constructor.isAccessible = true
+                constructor.newInstance(view) as RecyclerView.ViewHolder
+            }
+        } catch (e: NoSuchMethodException) {
+            e.printStackTrace()
+        } catch (e: IllegalAccessException) {
+            e.printStackTrace()
+        } catch (e: InstantiationException) {
+            e.printStackTrace()
+        } catch (e: InvocationTargetException) {
+            e.printStackTrace()
+        }
+
+        return null
+    }
+
+    fun replaceList(dataSet: List<LT>) {
+        this.dataSet = dataSet
+        notifyItemRangeChanged(0, dataSet.size)
+    }
+
+    fun replaceStartList(dataSet: List<LT>) {
+        this.dataSet.replaceStart(dataSet)
+        notifyItemRangeChanged(0, dataSet.size)
+    }
+
+    fun replaceEndList(dataSet: List<LT>) {
+        this.dataSet.replaceEnd(dataSet)
+        notifyItemRangeChanged(this.dataSet.size - dataSet.size, dataSet.size)
+    }
+
+    fun replaceAfterPosList(dataSet: List<LT>, position: Int) {
+        if (position < 0) {
+            this.dataSet.replaceStart(dataSet)
+            notifyItemRangeChanged(0, dataSet.size)
+        } else {
+            this.dataSet.replaceAfterPos(dataSet, position)
+            if (position >= this.dataSet.size || this.dataSet.size - position <= dataSet.size)
+                notifyItemRangeChanged(this.dataSet.size - dataSet.size, dataSet.size)
+            else notifyItemRangeChanged(position, dataSet.size)
+        }
+    }
+
+    fun deleteStartList(size: Int) {
+        this.dataSet = dataSet.drop(size)
+        notifyItemRangeRemoved(0, size)
+    }
+
+    fun deleteEndList(size: Int) {
+        if (size >= this.dataSet.size) clearData()
+        else {
+            this.dataSet = dataSet.dropLast(size)
+            notifyItemRangeRemoved(this.dataSet.size, size)
+        }
+    }
+
+    fun deleteAfterPosList(size: Int, position: Int) {
+        if (position < 0) {
+            if (this.dataSet.isNotEmpty()) {
+                if (this.dataSet.size < size) {
+                    clearData()
+                } else {
+                    this.dataSet = this.dataSet.drop(size)
+                    notifyItemRangeRemoved(0, size)
+                }
+            }
+        } else {
+            if (position < this.dataSet.size) {
+                if (this.dataSet.size - position < size) {
+                    val newSize = this.dataSet.size - position
+                    this.dataSet = this.dataSet.dropLast(newSize)
+                    notifyItemRangeRemoved(this.dataSet.size, newSize)
+                } else {
+                    val tempList = this.dataSet.split(position)
+                    this.dataSet = tempList.first
+                    this.dataSet = this.dataSet + tempList.second.drop(size)
+                    notifyItemRangeRemoved(tempList.first.size, size)
+                }
+            }
+        }
+    }
+
+    fun addAfterPosList(dataSet: List<LT>, position: Int) {
+        if (position < 0) {
+            this.dataSet.addAfter(dataSet, 0)
+            notifyItemRangeInserted(0, dataSet.size)
+        } else {
+            this.dataSet.addAfter(dataSet, position)
+            notifyItemRangeInserted(position, dataSet.size)
+        }
+    }
+
+    fun appendList(dataSet: List<LT>) {
+        this.dataSet = this.dataSet + dataSet
+        notifyItemRangeInserted(this.dataSet.size, dataSet.size)
+    }
+
+    fun prependList(dataSet: List<LT>) {
+        this.dataSet.prepend(dataSet)
+        notifyItemRangeInserted(0, dataSet.size)
+    }
+
+    fun prependItem(item: LT) {
+        this.dataSet = listOf(item) + this.dataSet
+        notifyItemRangeInserted(0, 1)
+    }
+
+    fun appendItem(item: LT) {
+        this.dataSet = this.dataSet + item
+        notifyItemRangeInserted(this.dataSet.size - 1, 1)
+    }
+
+    fun addAfterPosItem(item: LT, position: Int) {
+        if (position < 0) {
+            this.dataSet.addAfter(item, 0)
+            notifyItemRangeInserted(0, 1)
+        } else {
+            this.dataSet.addAfter(item, position)
+            notifyItemRangeInserted(position, 1)
+        }
+    }
+
+    fun replaceStartItem(item: LT) {
+        this.dataSet.replaceStart(item)
+        notifyItemChanged(0)
+    }
+
+    fun replaceEndItem(item: LT) {
+        this.dataSet.replaceEnd(item)
+        notifyItemChanged(this.dataSet.size - 1)
+    }
+
+    fun replaceAfterPosItem(item: LT, position: Int) {
+        if (position < 0) {
+            this.dataSet.replaceStart(item)
+            notifyItemChanged(0)
+        } else {
+            if (position < this.dataSet.size) {
+                this.dataSet.replaceAfterPos(item, position)
+                notifyItemChanged(position)
+            }
+        }
+    }
+
+    fun deleteStartItem() {
+        this.dataSet = dataSet.drop(1)
+        notifyItemRemoved(0)
+    }
+
+    fun deleteEndItem() {
+        this.dataSet = dataSet.dropLast(1)
+        notifyItemRemoved(this.dataSet.size)
+    }
+
+    fun deleteAfterPosItem(position: Int) {
+        if (position < 0) {
+            if (this.dataSet.isNotEmpty()) {
+                this.dataSet = dataSet.drop(1)
+                notifyItemRemoved(0)
+            }
+        } else {
+            if (position < this.dataSet.size) {
+                val tempList = this.dataSet.split(position)
+                this.dataSet = tempList.first
+                this.dataSet = this.dataSet + tempList.second.drop(1)
+                notifyItemRemoved(tempList.first.size)
+            }
+        }
+    }
+
+    fun clearData() {
+        val tempSize = dataSet.size
+        dataSet = emptyList()
+        notifyItemRangeRemoved(0, tempSize)
+    }
+
+    override fun getItemCount() = dataSet.size
+
+    override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+        holder.tryCast<PhrecyclerViewHolder<LT>> {
+            this.bind(dataSet[position])
+        }
+    }
+
+    private inline fun <reified T> Any?.tryCast(block: T.() -> Unit) {
+        if (this is T) {
+            block()
+        }
+    }
+
+    private fun List<LT>.prepend(list: List<LT>) {
+        val tempList = this
+        dataSet = list
+        dataSet = dataSet + tempList
+    }
+
+    private fun List<LT>.addAfter(list: List<LT>, position: Int) {
+        if (position < this.size) {
+            val tempList = this.split(position)
+            dataSet = tempList.first
+            dataSet = dataSet + list
+            dataSet = dataSet + tempList.second
+        } else {
+            dataSet = dataSet + list
+        }
+    }
+
+    private fun List<LT>.addAfter(item: LT, position: Int) {
+        if (position < this.size) {
+            val tempList = this.split(position)
+            dataSet = tempList.first
+            dataSet = dataSet + item
+            dataSet = dataSet + tempList.second
+        } else {
+            dataSet = dataSet + item
+        }
+    }
+
+    private fun List<LT>.replaceStart(list: List<LT>) {
+        if (this.size <= list.size) {
+            dataSet = list
+        } else {
+            val tempList = this.drop(list.size)
+            dataSet = list
+            dataSet = dataSet + tempList
+        }
+    }
+
+    private fun List<LT>.replaceEnd(list: List<LT>) {
+        if (this.size <= list.size) {
+            dataSet = list
+        } else {
+            val tempList = this.take(this.size - list.size)
+            dataSet = tempList
+            dataSet = dataSet + list
+        }
+    }
+
+    private fun List<LT>.replaceAfterPos(list: List<LT>, position: Int) {
+        if (this.size <= list.size) {
+            dataSet = list
+        } else {
+            if (position < this.size && this.size - position > list.size) {
+                val tempList = this.split(position)
+                dataSet = tempList.first
+                dataSet = dataSet + list
+                dataSet = dataSet + tempList.second.drop(list.size)
+            } else {
+                val tempList = this.take(this.size - list.size)
+                dataSet = tempList
+                dataSet = dataSet + list
+            }
+
+        }
+    }
+
+    private fun List<LT>.replaceStart(item: LT) {
+        if (this.size <= 1) {
+            dataSet = listOf(item)
+        } else {
+            val tempList = this.drop(1)
+            dataSet = listOf(item)
+            dataSet = dataSet + tempList
+        }
+    }
+
+    private fun List<LT>.replaceEnd(item: LT) {
+        if (this.size <= 1) {
+            dataSet = listOf(item)
+        } else {
+            val tempList = this.take(this.size - 1)
+            dataSet = tempList
+            dataSet = dataSet + item
+        }
+    }
+
+    private fun List<LT>.replaceAfterPos(item: LT, position: Int) {
+        if (this.size <= 1) {
+            dataSet = listOf(item)
+        } else {
+            if (position < this.size) {
+                val tempList = this.split(position)
+                dataSet = tempList.first
+                dataSet = dataSet + item
+                dataSet = dataSet + tempList.second.drop(1)
+            }
+
+        }
+    }
+
+}

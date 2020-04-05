@@ -239,7 +239,9 @@ abstract class PhrecyclerAdapter<LT>(private vararg val funcs: (LT) -> Unit) :
 
     fun getIdMap() = this.idMap
 
-    fun updateAll() = notifyDataSetChanged()
+    fun updateHardAll() = notifyDataSetChanged()
+
+    fun updateSoftAll() = notifyItemRangeChanged(0 , dataSet.size)
 
     fun updateItem(item: LT) = getPosition(item)?.let { notifyItemChanged(it) }
 

@@ -10,5 +10,5 @@ class Item1VH(itemView: View) : PhrecyclerViewHolder<DataClass>(itemView) {
         text.text = "ITEM1: ${item.id}"
     }
 
-    override fun viewClick() = viewToFunc(mapOf(itemView.clickCheck1 to 0))
+    override fun viewClicks() = viewToFunc(mapOf(itemView.clickCheck1 to 0))
 }

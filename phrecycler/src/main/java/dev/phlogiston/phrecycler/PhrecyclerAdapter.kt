@@ -17,7 +17,7 @@ abstract class PhrecyclerAdapter<LT>(private vararg val funcs: (LT) -> Unit) :
 
     abstract val setViewHolders: Map<Class<out PhrecyclerViewHolder<LT>>, Int>
 
-    open fun determineVTFunc(): (LT) -> Class<out RecyclerView.ViewHolder> =
+    open fun setUpViewType(): (LT) -> Class<out RecyclerView.ViewHolder> =
         { setViewHolders.keys.first() }
 
     open fun itemClick(): (LT) -> Unit = {}
@@ -37,7 +37,7 @@ abstract class PhrecyclerAdapter<LT>(private vararg val funcs: (LT) -> Unit) :
 
     final override fun getItemViewType(position: Int) =
         if (setViewHolders.keys.size == 1) setViewHolders.getValue(setViewHolders.keys.first())
-        else getViewHolderType(determineVTFunc().invoke(dataSet[position]))
+        else getViewHolderType(setUpViewType().invoke(dataSet[position]))
 
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         holder.tryCast<PhrecyclerViewHolder<LT>> {
@@ -46,9 +46,9 @@ abstract class PhrecyclerAdapter<LT>(private vararg val funcs: (LT) -> Unit) :
             this.itemView.setOnClickListener { itemClick().invoke(dataSet[position]) }
             if (funcs.isNotEmpty())
                 setViewHolders.keys.forEach { clazz ->
-                    if (clazz == this.viewClick().second) {
-                        this.viewClick().first.keys.forEach { view ->
-                            this.viewClick().first[view]?.let { funcId ->
+                    if (clazz == this.viewClicks().second) {
+                        this.viewClicks().first.keys.forEach { view ->
+                            this.viewClicks().first[view]?.let { funcId ->
                                 view?.setOnClickListener { funcs[funcId].invoke(dataSet[position]) }
                             }
                         }

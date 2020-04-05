@@ -14,7 +14,7 @@ class SamplePhrecycler(
         Item2VH::class.java to R.layout.item_2
     )
 
-    override fun determineVTFunc() = { dataClass: DataClass ->
+    override fun setUpViewType() = { dataClass: DataClass ->
         if (dataClass.id % 3 == 0) Item1VH::class.java
         else Item2VH::class.java
     }

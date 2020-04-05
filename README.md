@@ -6,7 +6,7 @@ Android API：minimum API 14 support for Android **4.0**
 
 **1. Gradle**
 
-    implementation 'com.wei.android.lib:fingerprintidentify:1.2.6'
+    implementation 'dev.phlogiston:phrecycler:1.0'
 
 **2. PhrecyclerAdapter**
 

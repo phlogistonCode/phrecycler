@@ -15,7 +15,7 @@ Android API：minimum API 14 support for Android **4.0**
     click1: (DataClass) -> Unit,
     click2: (DataClass) -> Unit,
     click3: (DataClass) -> Unit
-) : PhrecyclerAdapter<DataClass>(click1, click2, click3) {
+    ) : PhrecyclerAdapter<DataClass>(click1, click2, click3) {
 
     override val setViewHolders = mapOf(
         Item1VH::class.java to R.layout.item_1,
@@ -28,7 +28,7 @@ Android API：minimum API 14 support for Android **4.0**
     }
 
     override fun itemClick() = click
-}
+    }
 
 **3. PhrecyclerViewHolder**
 
@@ -40,8 +40,7 @@ Android API：minimum API 14 support for Android **4.0**
 
     override fun viewClick() = viewToFunc(mapOf(itemView.clickCheck1 to 0))
     }
-
-    ________________________________________________________________________________
+ ________________________________________________________________________________
     
     class Item2VH(itemView: View) : PhrecyclerViewHolder<DataClass>(itemView) {
 

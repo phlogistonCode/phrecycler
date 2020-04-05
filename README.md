@@ -4,6 +4,23 @@ This is a library that simplifies working with Recycler View.
 
 Android API：minimum API 14 support for Android **4.0**
 
+**Features**
+
+ - Use different types of holders
+ - Implement selectors - easy!
+ - Do anything with the list: add, delete, replace.
+ - Have access to the position and holder of any item.
+ - Update the modified list in any convenient way.
+ 
+ **In dev**
+- Handling an empty list.
+- Adding items by parameter.
+- Replacing items by parameter.
+- Removing items by parameter.
+- Checking items by parameter.
+- Changing parameters in item.
+- Improve memory consumption.
+
 **1. Gradle**
 
     implementation 'dev.phlogistoncode:phrecycler:1.0'

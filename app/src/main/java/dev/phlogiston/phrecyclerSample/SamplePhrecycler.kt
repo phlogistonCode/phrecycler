@@ -5,7 +5,7 @@ import dev.phlogiston.phrecycler.PhrecyclerAdapter
 class SamplePhrecycler(private val click: (DataClass) -> Unit,
                        click1: (DataClass) -> Unit,
                        click2: (DataClass) -> Unit,
-                       click3: (DataClass) -> Unit) : PhrecyclerAdapter<DataClass>() {
+                       click3: (DataClass) -> Unit) : PhrecyclerAdapter<DataClass>(click1, click2, click3) {
 
     override val setViewHolders = mapOf(
         Item1VH::class.java to R.layout.item_1,

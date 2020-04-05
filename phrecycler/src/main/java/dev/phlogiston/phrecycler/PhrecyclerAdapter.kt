@@ -9,7 +9,7 @@ import java.lang.reflect.Constructor
 import java.lang.reflect.InvocationTargetException
 import java.lang.reflect.Modifier
 
-abstract class PhrecyclerAdapter<LT> :
+abstract class PhrecyclerAdapter<LT>(private vararg val funcs: (LT) -> Unit) :
     RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     private var dataSet: List<LT> = ArrayList()
@@ -17,9 +17,10 @@ abstract class PhrecyclerAdapter<LT> :
 
     abstract val setViewHolders: Map<Class<out PhrecyclerViewHolder<LT>>, Int>
 
-    open fun determineVTFunc() : (LT) -> Class<out RecyclerView.ViewHolder> = { setViewHolders.keys.first() }
+    open fun determineVTFunc(): (LT) -> Class<out RecyclerView.ViewHolder> =
+        { setViewHolders.keys.first() }
 
-    open fun itemClick() : (LT) -> Unit = {}
+    open fun itemClick(): (LT) -> Unit = {}
 
     final override fun onCreateViewHolder(
         parent: ViewGroup,
@@ -42,7 +43,17 @@ abstract class PhrecyclerAdapter<LT> :
         holder.tryCast<PhrecyclerViewHolder<LT>> {
             this.bind(dataSet[position])
             idMap[dataSet[position]] = Pair(this.adapterPosition, this)
-            holder.itemView.setOnClickListener { itemClick().invoke(dataSet[position]) }
+            this.itemView.setOnClickListener { itemClick().invoke(dataSet[position]) }
+            if (funcs.isNotEmpty())
+                setViewHolders.keys.forEach { clazz ->
+                    if (clazz == this.viewClick().second) {
+                        this.viewClick().first.keys.forEach { view ->
+                            this.viewClick().first[view]?.let { funcId ->
+                                view?.setOnClickListener { funcs[funcId].invoke(dataSet[position]) }
+                            }
+                        }
+                    }
+                }
         }
     }
 

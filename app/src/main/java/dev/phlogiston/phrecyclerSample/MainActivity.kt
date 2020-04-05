@@ -9,9 +9,12 @@ import kotlin.random.Random
 
 class MainActivity : AppCompatActivity(R.layout.activity_main) {
 
-    private val adapter = SamplePhrecycler {
-        Log.d("PHRECYCLER: ", "CLICK ID: ${it.id}")
-    }
+    private val adapter = SamplePhrecycler(
+        { Log.d("PHRECYCLER: ", "ITEM ID: ${it.id}") },
+        { Log.d("PHRECYCLER: ", "CLICK1 ID: ${it.id}") },
+        { Log.d("PHRECYCLER: ", "CLICK2 ID: ${it.id}") },
+        { Log.d("PHRECYCLER: ", "CLICK3 ID: ${it.id}") }
+    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

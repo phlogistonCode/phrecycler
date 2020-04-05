@@ -6,7 +6,7 @@ Android API：minimum API 14 support for Android **4.0**
 
 **1. Gradle**
 
-    implementation 'dev.phlogiston:phrecycler:1.0'
+    implementation 'dev.phlogistoncode:phrecycler:1.0'
 
 **2. PhrecyclerAdapter**
 

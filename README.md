@@ -31,9 +31,7 @@ Pass in the type of your data class and, if necessary, a list of lambdas to hand
 
 Override setViewHolders:
 - Use `vhClassToLayout(pairs)` for shorter and more convenient code entry.
-- If You have one ViewHolder, then transfer only the pair with holder class to its layout id.
-
-Example:
+- If You have one ViewHolder, then transfer only the pair with holder class to its layout id:
 
 ```kotlin
     class SamplePhrecycler(vararg clicks: (DataClass) -> Unit) : PhrecyclerAdapter<DataClass>(clicks) {
@@ -43,9 +41,7 @@ Example:
     }
 ```
 
-- If You have several ViewHolder, then transfer several classes of the holder to its layout id and override `setupViewType()`, write logic for return ViewHolder class.
-
-Example:
+- If You have several ViewHolder, then transfer several classes of the holder to its layout id and override `setupViewType()`, write logic for return ViewHolder class:
 
 ```kotlin
     class SamplePhrecycler(vararg clicks: (DataClass) -> Unit) : PhrecyclerAdapter<DataClass>(clicks) {
@@ -71,7 +67,9 @@ Override `bind()` to bind code to a view.
 
 To handle clicks throughout the Viewholder, override `wholeClick` and pass the ID from the list of lambdas defined in the adapter.
 
-To handle custom clicks, override the `viewClicks` variable and pass the pairs with the view to the ID of the clicker function defined in the adapter implementation. For example: First element of the `vararg clicks: (DataClass) -> Unit` - this is 0; Second - this is 1; Third - this is 2. Use `viewToFuncId(pairs)` for shorter and more convenient code entry.
+To handle custom clicks, override the `viewClicks` variable and pass the pairs with the view to the ID of the clicker function defined in the adapter implementation.
+<br> For example: First element of the `vararg clicks: (DataClass) -> Unit` - this is 0; Second - this is 1; Third - this is 2.
+<br>Use `viewToFuncId(pairs)` for shorter and more convenient code entry.
 
 ```kotlin
     class Item1VH(itemView: View) : PhrecyclerViewHolder<DataClass>(itemView) {
@@ -183,6 +181,19 @@ Method                                                    | Description
 **Other**                                                 | 
 `getIdMap()`                                              | Get adapter map (item, postion, holder)
 `change(item: LT, change: LT.() -> Unit)`                 | Change item\`s parameters
+
+**5. Scroll To**
+
+If you use the LinearLayoutManager, then you can use the ScrollerLinearLayoutManager:
+
+```kotlin 
+recycler.layoutManager = ScrollerLinearLayoutManager(this)
+```
+
+Then you can call `smoothScrollToPosition(position)` to smoothly scroll to the element (the element will be at the top of the screen):
+```kotlin
+recycler.smoothScrollToPosition(100)
+```
 
 ## License ##
 ```

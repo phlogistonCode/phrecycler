@@ -10,8 +10,10 @@ class Item2VH(itemView: View) : PhrecyclerViewHolder<DataClass>(itemView) {
         text.text = "ITEM2: ${item.id}"
     }
 
-    override fun viewClicks() = viewToFunc(mapOf(
-        itemView.clickCheck2 to 1,
-        itemView.clickCheck3 to 2
-    ))
+    override val wholeClick = 0
+
+    override val viewClicks = viewToFuncId(
+        itemView.clickCheck2 to 2,
+        itemView.clickCheck3 to 3
+    )
 }

@@ -1,3 +1,3 @@
 package dev.phlogiston.phrecyclerSample
 
-data class DataClass(val id: Int)
+data class DataClass(var id: Int)

@@ -4,23 +4,23 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.annotation.LayoutRes
+import androidx.recyclerview.widget.GridLayoutManager
+import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import java.lang.reflect.Constructor
 import java.lang.reflect.InvocationTargetException
 import java.lang.reflect.Modifier
 
-abstract class PhrecyclerAdapter<LT>(private vararg val funcs: (LT) -> Unit) :
+abstract class PhrecyclerAdapter<LT>(private val funcs: Array<out (LT) -> Unit>) :
     RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     private var dataSet: List<LT> = ArrayList()
-    private var idMap: MutableMap<LT, Pair<Int, RecyclerView.ViewHolder>> = mutableMapOf()
+    private var idMap: MutableMap<LT, Pair<Int, PhrecyclerViewHolder<LT>>> = mutableMapOf()
 
     abstract val setViewHolders: Map<Class<out PhrecyclerViewHolder<LT>>, Int>
 
-    open fun setUpViewType(): (LT) -> Class<out RecyclerView.ViewHolder> =
+    open fun setupViewType(): (LT) -> Class<out PhrecyclerViewHolder<LT>> =
         { setViewHolders.keys.first() }
-
-    open fun itemClick(): (LT) -> Unit = {}
 
     final override fun onCreateViewHolder(
         parent: ViewGroup,
@@ -29,6 +29,22 @@ abstract class PhrecyclerAdapter<LT>(private vararg val funcs: (LT) -> Unit) :
         setViewHolders.keys.find { getViewHolderType(it) == viewType }?.let {
             setViewHolders[it]?.let { layoutId ->
                 createBaseGenericKInstance(it, createViewLayout(parent, layoutId))?.let { vh ->
+                    when (vh) {
+                        is PhrecyclerViewHolder<*> -> {
+                            if (funcs.isNotEmpty()) {
+                                if (vh.wholeClick != -1)
+                                    vh.wholeClickListener = View.OnClickListener {
+                                        funcs[vh.wholeClick](dataSet[vh.adapterPosition])
+                                    }
+                                vh.viewClicks.values.forEach { id ->
+                                    vh.viewsClickListeners.add(View.OnClickListener {
+                                        funcs[id](dataSet[vh.adapterPosition])
+                                    })
+                                }
+                                vh.createClickListeners()
+                            }
+                        }
+                    }
                     return vh
                 } ?: return createBaseViewHolder(parent)
             } ?: return createBaseViewHolder(parent)
@@ -37,44 +53,95 @@ abstract class PhrecyclerAdapter<LT>(private vararg val funcs: (LT) -> Unit) :
 
     final override fun getItemViewType(position: Int) =
         if (setViewHolders.keys.size == 1) setViewHolders.getValue(setViewHolders.keys.first())
-        else getViewHolderType(setUpViewType().invoke(dataSet[position]))
+        else getViewHolderType(setupViewType().invoke(dataSet[position]))
 
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         holder.tryCast<PhrecyclerViewHolder<LT>> {
             this.bind(dataSet[position])
             idMap[dataSet[position]] = Pair(this.adapterPosition, this)
-            this.itemView.setOnClickListener { itemClick().invoke(dataSet[position]) }
-            if (funcs.isNotEmpty())
-                setViewHolders.keys.forEach { clazz ->
-                    if (clazz == this.viewClicks().second) {
-                        this.viewClicks().first.keys.forEach { view ->
-                            this.viewClicks().first[view]?.let { funcId ->
-                                view?.setOnClickListener { funcs[funcId].invoke(dataSet[position]) }
-                            }
-                        }
-                    }
-                }
         }
     }
 
     override fun getItemCount() = dataSet.size
 
-    fun replaceList(dataSet: List<LT>) {
+    fun append(item: LT) {
+        this.dataSet = this.dataSet + item
+        notifyItemRangeInserted(this.dataSet.size - 1, 1)
+    }
+
+    fun append(dataSet: List<LT>) {
+        this.dataSet = this.dataSet + dataSet
+        notifyItemRangeInserted(this.dataSet.size, dataSet.size)
+    }
+
+    fun prepend(item: LT) {
+        this.dataSet = listOf(item) + this.dataSet
+        notifyItemRangeInserted(0, 1)
+    }
+
+    fun prepend(dataSet: List<LT>) {
+        this.dataSet.prepend(dataSet)
+        notifyItemRangeInserted(0, dataSet.size)
+    }
+
+    fun add(item: LT, position: Int) {
+        if (position < 0) {
+            this.dataSet.addAfter(item, 0)
+            notifyItemRangeInserted(0, 1)
+        } else {
+            this.dataSet.addAfter(item, position)
+            notifyItemRangeInserted(position, 1)
+        }
+    }
+
+    fun add(dataSet: List<LT>, position: Int) {
+        if (position < 0) {
+            this.dataSet.addAfter(dataSet, 0)
+            notifyItemRangeInserted(0, dataSet.size)
+        } else {
+            this.dataSet.addAfter(dataSet, position)
+            notifyItemRangeInserted(position, dataSet.size)
+        }
+    }
+
+    fun addAfterItem(item: LT, by: LT.() -> Boolean) {
+        val findedPos = dataSet.find(by)?.let { getPosition(it) }
+        findedPos?.let { add(item, it + 1) }
+    }
+
+    fun addAfterItem(dataSet: List<LT>, by: LT.() -> Boolean) {
+        val findedPos = dataSet.find(by)?.let { getPosition(it) }
+        findedPos?.let { add(dataSet, it + 1) }
+    }
+
+    fun addBeforeItem(item: LT, by: LT.() -> Boolean) {
+        val findedPos = dataSet.find(by)?.let { getPosition(it) }
+        findedPos?.let { add(item, it) }
+    }
+
+    fun addBeforeItem(dataSet: List<LT>, by: LT.() -> Boolean) {
+        val findedPos = dataSet.find(by)?.let { getPosition(it) }
+        findedPos?.let { add(dataSet, it) }
+    }
+
+    fun replace(dataSet: List<LT>) {
         this.dataSet = dataSet
         notifyItemRangeChanged(0, dataSet.size)
     }
 
-    fun replaceStartList(dataSet: List<LT>) {
-        this.dataSet.replaceStart(dataSet)
-        notifyItemRangeChanged(0, dataSet.size)
+    fun replace(item: LT, position: Int) {
+        if (position < 0) {
+            this.dataSet.replaceStart(item)
+            notifyItemChanged(0)
+        } else {
+            if (position < this.dataSet.size) {
+                this.dataSet.replaceAfterPos(item, position)
+                notifyItemChanged(position)
+            }
+        }
     }
 
-    fun replaceEndList(dataSet: List<LT>) {
-        this.dataSet.replaceEnd(dataSet)
-        notifyItemRangeChanged(this.dataSet.size - dataSet.size, dataSet.size)
-    }
-
-    fun replaceAfterPosList(dataSet: List<LT>, position: Int) {
+    fun replace(dataSet: List<LT>, position: Int) {
         if (position < 0) {
             this.dataSet.replaceStart(dataSet)
             notifyItemRangeChanged(0, dataSet.size)
@@ -86,12 +153,52 @@ abstract class PhrecyclerAdapter<LT>(private vararg val funcs: (LT) -> Unit) :
         }
     }
 
-    fun deleteStartList(size: Int) {
+    fun replace(item: LT, by: LT.() -> Boolean) {
+        val findedPos = dataSet.find(by)?.let { getPosition(it) }
+        findedPos?.let { replace(item, it) }
+    }
+
+    fun replace(dataSet: List<LT>, by: LT.() -> Boolean) {
+        val findedPos = dataSet.find(by)?.let { getPosition(it) }
+        findedPos?.let { replace(dataSet, it) }
+    }
+
+    fun replaceStart(item: LT) {
+        this.dataSet.replaceStart(item)
+        notifyItemChanged(0)
+    }
+
+    fun replaceStart(dataSet: List<LT>) {
+        this.dataSet.replaceStart(dataSet)
+        notifyItemRangeChanged(0, dataSet.size)
+    }
+
+    fun replaceEnd(item: LT) {
+        this.dataSet.replaceEnd(item)
+        notifyItemChanged(this.dataSet.size - 1)
+    }
+
+    fun replaceEnd(dataSet: List<LT>) {
+        this.dataSet.replaceEnd(dataSet)
+        notifyItemRangeChanged(this.dataSet.size - dataSet.size, dataSet.size)
+    }
+
+    fun deleteStart() {
+        this.dataSet = dataSet.drop(1)
+        notifyItemRemoved(0)
+    }
+
+    fun deleteStart(size: Int) {
         this.dataSet = dataSet.drop(size)
         notifyItemRangeRemoved(0, size)
     }
 
-    fun deleteEndList(size: Int) {
+    fun deleteEnd() {
+        this.dataSet = dataSet.dropLast(1)
+        notifyItemRemoved(this.dataSet.size)
+    }
+
+    fun deleteEnd(size: Int) {
         if (size >= this.dataSet.size) clearData()
         else {
             this.dataSet = dataSet.dropLast(size)
@@ -99,7 +206,23 @@ abstract class PhrecyclerAdapter<LT>(private vararg val funcs: (LT) -> Unit) :
         }
     }
 
-    fun deleteAfterPosList(size: Int, position: Int) {
+    fun delete(position: Int) {
+        if (position < 0) {
+            if (this.dataSet.isNotEmpty()) {
+                this.dataSet = dataSet.drop(1)
+                notifyItemRemoved(0)
+            }
+        } else {
+            if (position < this.dataSet.size) {
+                val tempList = this.dataSet.split(position)
+                this.dataSet = tempList.first
+                this.dataSet = this.dataSet + tempList.second.drop(1)
+                notifyItemRemoved(tempList.first.size)
+            }
+        }
+    }
+
+    fun delete(size: Int, position: Int) {
         if (position < 0) {
             if (this.dataSet.isNotEmpty()) {
                 if (this.dataSet.size < size) {
@@ -125,95 +248,27 @@ abstract class PhrecyclerAdapter<LT>(private vararg val funcs: (LT) -> Unit) :
         }
     }
 
-    fun addAfterPosList(dataSet: List<LT>, position: Int) {
-        if (position < 0) {
-            this.dataSet.addAfter(dataSet, 0)
-            notifyItemRangeInserted(0, dataSet.size)
-        } else {
-            this.dataSet.addAfter(dataSet, position)
-            notifyItemRangeInserted(position, dataSet.size)
-        }
+    fun delete(item: LT) {
+        val pos = getPosition(item)
+        dataSet = dataSet - item
+        pos?.let { notifyItemRemoved(it) }
     }
 
-    fun appendList(dataSet: List<LT>) {
-        this.dataSet = this.dataSet + dataSet
-        notifyItemRangeInserted(this.dataSet.size, dataSet.size)
+    fun delete(by: LT.() -> Boolean) {
+        dataSet.find(by)?.let { delete(it) }
     }
 
-    fun prependList(dataSet: List<LT>) {
-        this.dataSet.prepend(dataSet)
-        notifyItemRangeInserted(0, dataSet.size)
-    }
-
-    fun prependItem(item: LT) {
-        this.dataSet = listOf(item) + this.dataSet
-        notifyItemRangeInserted(0, 1)
-    }
-
-    fun appendItem(item: LT) {
-        this.dataSet = this.dataSet + item
-        notifyItemRangeInserted(this.dataSet.size - 1, 1)
-    }
-
-    fun addAfterPosItem(item: LT, position: Int) {
-        if (position < 0) {
-            this.dataSet.addAfter(item, 0)
-            notifyItemRangeInserted(0, 1)
-        } else {
-            this.dataSet.addAfter(item, position)
-            notifyItemRangeInserted(position, 1)
-        }
-    }
-
-    fun replaceStartItem(item: LT) {
-        this.dataSet.replaceStart(item)
-        notifyItemChanged(0)
-    }
-
-    fun replaceEndItem(item: LT) {
-        this.dataSet.replaceEnd(item)
-        notifyItemChanged(this.dataSet.size - 1)
-    }
-
-    fun replaceAfterPosItem(item: LT, position: Int) {
-        if (position < 0) {
-            this.dataSet.replaceStart(item)
-            notifyItemChanged(0)
-        } else {
-            if (position < this.dataSet.size) {
-                this.dataSet.replaceAfterPos(item, position)
-                notifyItemChanged(position)
-            }
-        }
-    }
-
-    fun deleteStartItem() {
-        this.dataSet = dataSet.drop(1)
-        notifyItemRemoved(0)
-    }
-
-    fun deleteEndItem() {
-        this.dataSet = dataSet.dropLast(1)
-        notifyItemRemoved(this.dataSet.size)
-    }
-
-    fun deleteAfterPosItem(position: Int) {
-        if (position < 0) {
-            if (this.dataSet.isNotEmpty()) {
-                this.dataSet = dataSet.drop(1)
-                notifyItemRemoved(0)
-            }
-        } else {
-            if (position < this.dataSet.size) {
-                val tempList = this.dataSet.split(position)
-                this.dataSet = tempList.first
-                this.dataSet = this.dataSet + tempList.second.drop(1)
-                notifyItemRemoved(tempList.first.size)
-            }
-        }
+    fun clearData() {
+        val tempSize = dataSet.size
+        dataSet = emptyList()
+        notifyItemRangeRemoved(0, tempSize)
     }
 
     fun getPosition(item: LT) = idMap[item]?.first
+
+    fun getPosition(by: LT.() -> Boolean) {
+        dataSet.find(by)?.let { getPosition(it) }
+    }
 
     fun getPositions(list: List<LT>): List<Int> {
         val positions = mutableListOf<Int>()
@@ -223,9 +278,29 @@ abstract class PhrecyclerAdapter<LT>(private vararg val funcs: (LT) -> Unit) :
         return positions
     }
 
+    fun getScreenPositions(layoutManager: RecyclerView.LayoutManager?): List<Int?> {
+        return getPositions(getScreenItems(layoutManager))
+    }
+
+    fun getScreenPosition(layoutManager: RecyclerView.LayoutManager?, by: LT.() -> Boolean): Int? {
+        return getScreenItem(layoutManager, by)?.let { getPosition(it) }
+    }
+
+    fun getScreenPositionFirst(layoutManager: RecyclerView.LayoutManager?): Int? {
+        return getScreenItemFirst(layoutManager)?.let { getPosition(it) }
+    }
+
+    fun getScreenPositionLast(layoutManager: RecyclerView.LayoutManager?): Int? {
+        return getScreenItemLast(layoutManager)?.let { getPosition(it) }
+    }
+
     fun getHolder(item: LT) = idMap[item]?.second
 
     fun getHolder(position: Int) = idMap[dataSet[position]]?.second
+
+    fun getHolder(by: LT.() -> Boolean) {
+        dataSet.find(by)?.let { getHolder(it) }
+    }
 
     fun getHolders(list: List<LT>): List<RecyclerView.ViewHolder> {
         val holders = mutableListOf<RecyclerView.ViewHolder>()
@@ -235,37 +310,140 @@ abstract class PhrecyclerAdapter<LT>(private vararg val funcs: (LT) -> Unit) :
         return holders
     }
 
-    fun getDataSet() = this.dataSet
+    fun getScreenHolders(layoutManager: RecyclerView.LayoutManager?): List<RecyclerView.ViewHolder?> {
+        return getHolders(getScreenItems(layoutManager))
+    }
 
-    fun getIdMap() = this.idMap
+    fun getScreenHolder(layoutManager: RecyclerView.LayoutManager?, by: LT.() -> Boolean): RecyclerView.ViewHolder? {
+        return getScreenItem(layoutManager, by)?.let {getHolder(it) }
+    }
 
-    fun updateHardAll() = notifyDataSetChanged()
+    fun getScreenHolderFirst(layoutManager: RecyclerView.LayoutManager?): RecyclerView.ViewHolder? {
+        return getScreenItemFirst(layoutManager)?.let { getHolder(it) }
+    }
 
-    fun updateSoftAll() = notifyItemRangeChanged(0 , dataSet.size)
+    fun getScreenHolderLast(layoutManager: RecyclerView.LayoutManager?): RecyclerView.ViewHolder? {
+        return getScreenItemLast(layoutManager)?.let { getHolder(it) }
+    }
 
-    fun updateItem(item: LT) = getPosition(item)?.let { notifyItemChanged(it) }
+    fun update(item: LT) = getPosition(item)?.let { notifyItemChanged(it) }
 
-    fun updateList(list: List<LT>) {
+    fun update(list: List<LT>) {
         list.forEach { item ->
             getPosition(item)?.let { notifyItemChanged(it) }
         }
+    }
+
+    fun update(size: Int, position: Int) = notifyItemRangeChanged(position, size)
+
+    fun update(by: LT.() -> Boolean) {
+        idMap[idMap.keys.find(by)]?.let { notifyItemChanged(it.first) }
     }
 
     fun updateStart(size: Int) = notifyItemRangeChanged(0, size)
 
     fun updateEnd(size: Int) = notifyItemRangeChanged(dataSet.size - size, size)
 
-    fun updateAfterPos(size: Int, position: Int) = notifyItemRangeChanged(position, size)
-
-    fun updateItemByParam(by: (LT) -> Boolean) {
-        idMap[idMap.keys.find { by.invoke(it) }]?.let { notifyItemChanged(it.first) }
+    fun updateScreen(layoutManager: RecyclerView.LayoutManager?) {
+        update(getScreenItems(layoutManager))
     }
 
-    fun clearData() {
-        val tempSize = dataSet.size
-        dataSet = emptyList()
-        notifyItemRangeRemoved(0, tempSize)
+    fun updateScreen(layoutManager: RecyclerView.LayoutManager?, by: LT.() -> Boolean) {
+        getScreenItem(layoutManager, by)?.let { update(it) }
     }
+
+    fun updateScreenFirst(layoutManager: RecyclerView.LayoutManager?) {
+        getScreenItemFirst(layoutManager)?.let { update(it) }
+    }
+
+    fun updateScreenLast(layoutManager: RecyclerView.LayoutManager?) {
+        getScreenItemLast(layoutManager)?.let { update(it) }
+    }
+
+    fun updateSoftAll() = notifyItemRangeChanged(0, dataSet.size)
+
+    fun updateHardAll() = notifyDataSetChanged()
+
+    fun getItem(position: Int) = dataSet[position]
+
+    fun getFirstItem() = dataSet.first()
+
+    fun getLastItem() = dataSet.last()
+
+    fun getItem(by: LT.() -> Boolean) = dataSet.find(by)
+
+    fun getItems(by: LT.() -> Boolean) = dataSet.filter(by)
+
+    fun getScreenItems(layoutManager: RecyclerView.LayoutManager?): List<LT> {
+        return when(layoutManager) {
+            is LinearLayoutManager -> {
+                val firstId = layoutManager.findFirstVisibleItemPosition()
+                val lastId = layoutManager.findLastVisibleItemPosition()
+                dataSet.subList(firstId, lastId)
+            }
+            is GridLayoutManager -> {
+                val firstId = layoutManager.findFirstVisibleItemPosition()
+                val lastId = layoutManager.findLastVisibleItemPosition()
+                dataSet.subList(firstId, lastId)
+            }
+            else -> listOf()
+        }
+    }
+
+    fun getScreenItem(layoutManager: RecyclerView.LayoutManager?, by: LT.() -> Boolean): LT? {
+        return when(layoutManager) {
+            is LinearLayoutManager -> {
+                val firstId = layoutManager.findFirstVisibleItemPosition()
+                val lastId = layoutManager.findLastVisibleItemPosition()
+                dataSet.subList(firstId, lastId).find(by)
+            }
+            is GridLayoutManager -> {
+                val firstId = layoutManager.findFirstVisibleItemPosition()
+                val lastId = layoutManager.findLastVisibleItemPosition()
+                dataSet.subList(firstId, lastId).find(by)
+            }
+            else -> null
+        }
+    }
+
+    fun getScreenItemFirst(layoutManager: RecyclerView.LayoutManager?): LT? {
+        return when(layoutManager) {
+            is LinearLayoutManager -> {
+                val firstId = layoutManager.findFirstVisibleItemPosition()
+                dataSet[firstId]
+            }
+            is GridLayoutManager -> {
+                val firstId = layoutManager.findFirstVisibleItemPosition()
+                dataSet[firstId]
+            }
+            else -> null
+        }
+    }
+
+    fun getScreenItemLast(layoutManager: RecyclerView.LayoutManager?): LT? {
+        return when(layoutManager) {
+            is LinearLayoutManager -> {
+                val lastId = layoutManager.findLastVisibleItemPosition()
+                dataSet[lastId]
+            }
+            is GridLayoutManager -> {
+                val lastId = layoutManager.findLastVisibleItemPosition()
+                dataSet[lastId]
+            }
+            else -> null
+        }
+    }
+
+    fun getDataSet() = this.dataSet
+
+    fun getIdMap() = this.idMap
+
+    fun change(item: LT, change: LT.() -> Unit) {
+        item.changeItemInternal(change)
+    }
+
+    fun vhClassToLayout(vararg pairs: Pair<Class<out PhrecyclerViewHolder<LT>>, Int>)
+            : Map<Class<out PhrecyclerViewHolder<LT>>, Int> = mapOf(*pairs)
 
     private fun createBaseViewHolder(parent: ViewGroup) =
         BaseViewHolder(createViewLayout(parent, R.layout.item_baseviewholder))
@@ -309,6 +487,12 @@ abstract class PhrecyclerAdapter<LT>(private vararg val funcs: (LT) -> Unit) :
         if (this is T) {
             block()
         }
+    }
+
+    private fun LT.changeItemInternal(change: LT.() -> Unit) {
+        val pos = getPosition(this)
+        this.change()
+        pos?.let { notifyItemChanged(it) }
     }
 
     private fun List<LT>.prepend(list: List<LT>) {

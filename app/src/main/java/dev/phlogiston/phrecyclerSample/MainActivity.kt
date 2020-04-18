@@ -19,18 +19,16 @@ class MainActivity : AppCompatActivity(R.layout.activity_main) {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        prependData.setOnClickListener { adapter.prepend(DataClass(Random.nextInt(30))) }
-        appendData.setOnClickListener { adapter.append(DataClass(Random.nextInt(30))) }
-        anyAddData.setOnClickListener { adapter.add(DataClass(Random.nextInt(30)), 3) }
-        replaceStart.setOnClickListener { adapter.replace(DataClass(5), 2) }
-        additBtn.setOnClickListener {
-            recycler.smoothScrollToPosition(100)
-        }
+        prependData.setOnClickListener { adapter.addAfterItem(DataClass(Random.nextInt(30))) { id == 3 } }
+        appendData.setOnClickListener { adapter.addAfterItem(listOf(DataClass(Random.nextInt(30)), DataClass(Random.nextInt(30)))) { id == 3 } }
+        anyAddData.setOnClickListener { adapter.replace(DataClass(Random.nextInt(30))) { id == 4 } }
+        replaceStart.setOnClickListener { adapter.replace(listOf(DataClass(Random.nextInt(30)), DataClass(Random.nextInt(30)), DataClass(Random.nextInt(30)))) { id == 5 } }
+        additBtn.setOnClickListener { Log.d("POS: ", adapter.getScreenPositions(recycler.layoutManager).toString()) }
 
-        dop1.setOnClickListener { adapter.updateStart(3) }
-        dop2.setOnClickListener { adapter.updateEnd(3) }
-        dop3.setOnClickListener { adapter.update(3, 3) }
-        dop4.setOnClickListener { adapter.updateSoftAll() }
+        dop1.setOnClickListener { adapter.append(DataClass(3)) }
+        dop2.setOnClickListener { adapter.update(DataClass(100)) }
+        dop3.setOnClickListener { adapter.update(listOf(DataClass(100), DataClass(4))) }
+        dop4.setOnClickListener { adapter.update { id == 100 } }
         dop5.setOnClickListener { adapter.updateHardAll() }
 
         initRv()

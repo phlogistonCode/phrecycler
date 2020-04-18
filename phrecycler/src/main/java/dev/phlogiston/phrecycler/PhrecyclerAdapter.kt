@@ -15,7 +15,6 @@ abstract class PhrecyclerAdapter<LT>(private val funcs: Array<out (LT) -> Unit>)
     RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     private var dataSet: List<LT> = ArrayList()
-    private var idMap: MutableMap<LT, Pair<Int, PhrecyclerViewHolder<LT>>> = mutableMapOf()
 
     abstract val setViewHolders: Map<Class<out PhrecyclerViewHolder<LT>>, Int>
 
@@ -58,7 +57,6 @@ abstract class PhrecyclerAdapter<LT>(private val funcs: Array<out (LT) -> Unit>)
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         holder.tryCast<PhrecyclerViewHolder<LT>> {
             this.bind(dataSet[position])
-            idMap[dataSet[position]] = Pair(this.adapterPosition, this)
         }
     }
 
@@ -105,23 +103,19 @@ abstract class PhrecyclerAdapter<LT>(private val funcs: Array<out (LT) -> Unit>)
     }
 
     fun addAfterItem(item: LT, by: LT.() -> Boolean) {
-        val findedPos = dataSet.find(by)?.let { getPosition(it) }
-        findedPos?.let { add(item, it + 1) }
+        add(item, dataSet.indexOfFirst(by) + 1)
     }
 
     fun addAfterItem(dataSet: List<LT>, by: LT.() -> Boolean) {
-        val findedPos = dataSet.find(by)?.let { getPosition(it) }
-        findedPos?.let { add(dataSet, it + 1) }
+        add(dataSet, this.dataSet.indexOfFirst(by) + 1)
     }
 
     fun addBeforeItem(item: LT, by: LT.() -> Boolean) {
-        val findedPos = dataSet.find(by)?.let { getPosition(it) }
-        findedPos?.let { add(item, it) }
+        add(item, dataSet.indexOfFirst(by))
     }
 
     fun addBeforeItem(dataSet: List<LT>, by: LT.() -> Boolean) {
-        val findedPos = dataSet.find(by)?.let { getPosition(it) }
-        findedPos?.let { add(dataSet, it) }
+        add(dataSet, dataSet.indexOfFirst(by))
     }
 
     fun replace(dataSet: List<LT>) {
@@ -131,11 +125,11 @@ abstract class PhrecyclerAdapter<LT>(private val funcs: Array<out (LT) -> Unit>)
 
     fun replace(item: LT, position: Int) {
         if (position < 0) {
-            this.dataSet.replaceStart(item)
-            notifyItemChanged(0)
+//            this.dataSet.replaceStart(item)
+//            notifyItemChanged(0)
         } else {
             if (position < this.dataSet.size) {
-                this.dataSet.replaceAfterPos(item, position)
+                this.dataSet.replaceInPos(item, position)
                 notifyItemChanged(position)
             }
         }
@@ -143,24 +137,19 @@ abstract class PhrecyclerAdapter<LT>(private val funcs: Array<out (LT) -> Unit>)
 
     fun replace(dataSet: List<LT>, position: Int) {
         if (position < 0) {
-            this.dataSet.replaceStart(dataSet)
-            notifyItemRangeChanged(0, dataSet.size)
+//            this.dataSet.replaceStart(dataSet)
+//            notifyItemRangeChanged(0, dataSet.size)
         } else {
-            this.dataSet.replaceAfterPos(dataSet, position)
-            if (position >= this.dataSet.size || this.dataSet.size - position <= dataSet.size)
-                notifyItemRangeChanged(this.dataSet.size - dataSet.size, dataSet.size)
-            else notifyItemRangeChanged(position, dataSet.size)
+            this.dataSet.replaceInPos(dataSet, position)
         }
     }
 
     fun replace(item: LT, by: LT.() -> Boolean) {
-        val findedPos = dataSet.find(by)?.let { getPosition(it) }
-        findedPos?.let { replace(item, it) }
+        replace(item, dataSet.indexOfFirst(by))
     }
 
     fun replace(dataSet: List<LT>, by: LT.() -> Boolean) {
-        val findedPos = dataSet.find(by)?.let { getPosition(it) }
-        findedPos?.let { replace(dataSet, it) }
+        replace(dataSet, this.dataSet.indexOfFirst(by))
     }
 
     fun replaceStart(item: LT) {
@@ -249,9 +238,9 @@ abstract class PhrecyclerAdapter<LT>(private val funcs: Array<out (LT) -> Unit>)
     }
 
     fun delete(item: LT) {
-        val pos = getPosition(item)
+        val pos = dataSet.indexOf(item)
         dataSet = dataSet - item
-        pos?.let { notifyItemRemoved(it) }
+        notifyItemRemoved(pos)
     }
 
     fun delete(by: LT.() -> Boolean) {
@@ -264,7 +253,7 @@ abstract class PhrecyclerAdapter<LT>(private val funcs: Array<out (LT) -> Unit>)
         notifyItemRangeRemoved(0, tempSize)
     }
 
-    fun getPosition(item: LT) = idMap[item]?.first
+    fun getPosition(item: LT) = dataSet.indexOf(item)
 
     fun getPosition(by: LT.() -> Boolean) {
         dataSet.find(by)?.let { getPosition(it) }
@@ -273,7 +262,7 @@ abstract class PhrecyclerAdapter<LT>(private val funcs: Array<out (LT) -> Unit>)
     fun getPositions(list: List<LT>): List<Int> {
         val positions = mutableListOf<Int>()
         list.forEach {
-            idMap[it]?.first?.let { position -> positions.add(position) }
+            positions.add(dataSet.indexOf(it))
         }
         return positions
     }
@@ -293,51 +282,18 @@ abstract class PhrecyclerAdapter<LT>(private val funcs: Array<out (LT) -> Unit>)
     fun getScreenPositionLast(layoutManager: RecyclerView.LayoutManager?): Int? {
         return getScreenItemLast(layoutManager)?.let { getPosition(it) }
     }
-
-    fun getHolder(item: LT) = idMap[item]?.second
-
-    fun getHolder(position: Int) = idMap[dataSet[position]]?.second
-
-    fun getHolder(by: LT.() -> Boolean) {
-        dataSet.find(by)?.let { getHolder(it) }
-    }
-
-    fun getHolders(list: List<LT>): List<RecyclerView.ViewHolder> {
-        val holders = mutableListOf<RecyclerView.ViewHolder>()
-        list.forEach {
-            idMap[it]?.second?.let { holder -> holders.add(holder) }
-        }
-        return holders
-    }
-
-    fun getScreenHolders(layoutManager: RecyclerView.LayoutManager?): List<RecyclerView.ViewHolder?> {
-        return getHolders(getScreenItems(layoutManager))
-    }
-
-    fun getScreenHolder(layoutManager: RecyclerView.LayoutManager?, by: LT.() -> Boolean): RecyclerView.ViewHolder? {
-        return getScreenItem(layoutManager, by)?.let {getHolder(it) }
-    }
-
-    fun getScreenHolderFirst(layoutManager: RecyclerView.LayoutManager?): RecyclerView.ViewHolder? {
-        return getScreenItemFirst(layoutManager)?.let { getHolder(it) }
-    }
-
-    fun getScreenHolderLast(layoutManager: RecyclerView.LayoutManager?): RecyclerView.ViewHolder? {
-        return getScreenItemLast(layoutManager)?.let { getHolder(it) }
-    }
-
-    fun update(item: LT) = getPosition(item)?.let { notifyItemChanged(it) }
+    fun update(item: LT) = notifyItemChanged(dataSet.indexOf(item))
 
     fun update(list: List<LT>) {
         list.forEach { item ->
-            getPosition(item)?.let { notifyItemChanged(it) }
+            notifyItemChanged(dataSet.indexOf(item))
         }
     }
 
     fun update(size: Int, position: Int) = notifyItemRangeChanged(position, size)
 
     fun update(by: LT.() -> Boolean) {
-        idMap[idMap.keys.find(by)]?.let { notifyItemChanged(it.first) }
+        notifyItemChanged(dataSet.indexOfFirst(by))
     }
 
     fun updateStart(size: Int) = notifyItemRangeChanged(0, size)
@@ -436,10 +392,11 @@ abstract class PhrecyclerAdapter<LT>(private val funcs: Array<out (LT) -> Unit>)
 
     fun getDataSet() = this.dataSet
 
-    fun getIdMap() = this.idMap
-
     fun change(item: LT, change: LT.() -> Unit) {
-        item.changeItemInternal(change)
+        dataSet.find { it == item }?.let {
+            it.change()
+            notifyItemChanged(dataSet.indexOf(it))
+        }
     }
 
     fun vhClassToLayout(vararg pairs: Pair<Class<out PhrecyclerViewHolder<LT>>, Int>)
@@ -487,12 +444,6 @@ abstract class PhrecyclerAdapter<LT>(private val funcs: Array<out (LT) -> Unit>)
         if (this is T) {
             block()
         }
-    }
-
-    private fun LT.changeItemInternal(change: LT.() -> Unit) {
-        val pos = getPosition(this)
-        this.change()
-        pos?.let { notifyItemChanged(it) }
     }
 
     private fun List<LT>.prepend(list: List<LT>) {
@@ -543,21 +494,24 @@ abstract class PhrecyclerAdapter<LT>(private val funcs: Array<out (LT) -> Unit>)
         }
     }
 
-    private fun List<LT>.replaceAfterPos(list: List<LT>, position: Int) {
+    private fun List<LT>.replaceInPos(list: List<LT>, position: Int) {
         if (this.size <= list.size) {
             dataSet = list
+            notifyItemRangeChanged(0, dataSet.size)
         } else {
             if (position < this.size && this.size - position > list.size) {
                 val tempList = this.split(position)
                 dataSet = tempList.first
                 dataSet = dataSet + list
                 dataSet = dataSet + tempList.second.drop(list.size)
+                notifyItemRangeChanged(position, list.size)
             } else {
-                val tempList = this.take(this.size - list.size)
+                val tempList = this.take(position)
                 dataSet = tempList
                 dataSet = dataSet + list
+                notifyItemRangeChanged(position, this.size - position)
+                notifyItemRangeInserted(this.size, list.size - (this.size - position))
             }
-
         }
     }
 
@@ -581,7 +535,7 @@ abstract class PhrecyclerAdapter<LT>(private val funcs: Array<out (LT) -> Unit>)
         }
     }
 
-    private fun List<LT>.replaceAfterPos(item: LT, position: Int) {
+    private fun List<LT>.replaceInPos(item: LT, position: Int) {
         if (this.size <= 1) {
             dataSet = listOf(item)
         } else {
